@@ -1,0 +1,149 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mein Gefrierschrank</title>
+<style>
+body{font-family:Arial,sans-serif;background:#edf5fa;color:#17364b;margin:0;padding:15px}
+h1{text-align:center;background:#174b70;color:white;padding:20px;border-radius:12px}
+button{font-size:19px;padding:15px;margin:5px 0;width:100%;border:0;border-radius:10px;background:#174b70;color:white}
+input,select{font-size:18px;padding:12px;width:100%;box-sizing:border-box;margin:5px 0}
+.schublade{background:white;padding:12px;margin:12px 0;border-radius:12px}
+.artikel{border-top:1px solid #ccc;padding:10px 0}
+img{max-width:100%;max-height:180px}
+</style>
+</head>
+<body>
+<h1>❄️ Mein Gefrierschrank</h1>
+
+<button onclick="neu()">➕ Lebensmittel hinzufügen</button>
+<input id="suche" placeholder="🔍 Lebensmittel suchen" oninput="anzeigen()">
+
+<div id="eingabe" hidden>
+<h2>Lebensmittel eintragen</h2>
+<input id="name" placeholder="Name des Lebensmittels">
+<input id="menge" placeholder="Menge, z. B. 4 Stück">
+<label>Einfrierdatum</label>
+<input id="datum" type="date">
+<label>Schublade</label>
+<select id="schublade">
+<option value="1">1 – ganz oben</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5 – ganz unten</option>
+</select>
+<label>Foto auswählen</label>
+<input id="foto" type="file" accept="image/*">
+<button onclick="speichern()">Eintrag speichern</button>
+<button onclick="document.getElementById('eingabe').hidden=true">Abbrechen</button>
+</div>
+
+<div id="liste"></div>
+
+<button onclick="sichern()">💾 Datensicherung herunterladen</button>
+<input type="file" accept=".json" onchange="laden(event)">
+
+<script>
+let daten=[];
+try{daten=JSON.parse(localStorage.getItem("gefrierliste")||"[]")}catch(e){daten=[]}
+
+function neu(){
+document.getElementById("eingabe").hidden=false;
+document.getElementById("name").value="";
+document.getElementById("menge").value="";
+document.getElementById("datum").value=new Date().toISOString().slice(0,10);
+document.getElementById("foto").value="";
+}
+
+function speichern(){
+let n=document.getElementById("name").value.trim();
+let m=document.getElementById("menge").value.trim();
+let d=document.getElementById("datum").value;
+let s=Number(document.getElementById("schublade").value);
+let f=document.getElementById("foto").files[0];
+if(!n||!m||!d){alert("Bitte Name, Menge und Datum eingeben.");return}
+function fertig(bild){
+daten.push({n,m,d,s,bild});
+try{
+localStorage.setItem("gefrierliste",JSON.stringify(daten));
+anzeigen();
+document.getElementById("eingabe").hidden=true;
+}catch(e){alert("Speicher voll. Bitte ein kleineres Foto verwenden.");}
+}
+if(f){
+if(f.size>1500000){alert("Bitte ein kleineres Foto auswählen.");return}
+let r=new FileReader();
+r.onload=()=>fertig(r.result);
+r.readAsDataURL(f);
+}else fertig("");
+}
+
+function anzeigen(){
+let q=document.getElementById("suche").value.toLowerCase();
+let l=document.getElementById("liste");
+l.innerHTML="";
+for(let s=1;s<=5;s++){
+let b=document.createElement("section");
+b.className="schublade";
+let h=document.createElement("h2");
+h.textContent="Schublade "+s;
+b.appendChild(h);
+daten.forEach((x,i)=>{
+if(x.s!==s||!(x.n+" "+x.m).toLowerCase().includes(q))return;
+let a=document.createElement("div");
+a.className="artikel";
+let t=document.createElement("strong");
+t.textContent=x.n;
+a.appendChild(t);
+let p=document.createElement("p");
+p.textContent="Menge: "+x.m+" | Eingefroren: "+x.d;
+a.appendChild(p);
+if(x.bild){let im=document.createElement("img");im.src=x.bild;im.alt=x.n;a.appendChild(im)}
+let k=document.createElement("button");
+k.textContent="Als entnommen markieren";
+k.onclick=()=>{
+if(confirm("Lebensmittel entnehmen?")){
+daten.splice(i,1);
+localStorage.setItem("gefrierliste",JSON.stringify(daten));
+anzeigen();
+}};
+a.appendChild(k);
+b.appendChild(a);
+});
+l.appendChild(b);
+}
+}
+
+function sichern(){
+let blob=new Blob([JSON.stringify(daten)],{type:"application/json"});
+let a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="Gefrierschrank-Sicherung.json";
+a.click();
+URL.revokeObjectURL(a.href);
+}
+
+function laden(e){
+let f=e.target.files[0];if(!f)return;
+let r=new FileReader();
+r.onload=()=>{
+try{
+let x=JSON.parse(r.result);
+if(!Array.isArray(x))throw Error();
+if(confirm("Aktuelle Liste durch Sicherung ersetzen?")){
+daten=x;
+localStorage.setItem("gefrierliste",JSON.stringify(daten));
+anzeigen();
+}
+}catch(e){alert("Die Sicherungsdatei ist ungültig.")}
+};
+r.readAsText(f);
+}
+
+anzeigen();
+</script>
+</body>
+</html>
